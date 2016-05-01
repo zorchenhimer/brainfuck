@@ -1,11 +1,12 @@
 package bf
 
 import (
-    "errors"
     "fmt"
     "io/ioutil"
     "os"
 )
+
+var debug bool = false
 
 type Engine struct {
     cellIdx     int
@@ -15,6 +16,8 @@ type Engine struct {
     commands    []Command
 
     nestLevel   int
+
+    programFilename string
 }
 
 type BrainfuckError struct {
@@ -35,14 +38,6 @@ const (
     C_JMPFOR    Command = '['   // Jump forward
     C_JMPBAC    Command = ']'   // Jump backwards
 )
-
-func newError(offset int, program, message string) *BrainfuckError {
-    return &BrainfuckError{
-        err:      errors.New(message),
-        offset:     offset,
-        program:    program,
-    }
-}
 
 func (b *BrainfuckError) String() string {
     return b.Error() + "\n" + b.HelpString()
@@ -85,6 +80,7 @@ func (e *Engine) Load(filename string) error {
     if err != nil {
         return err
     }
+    e.programFilename = filename
 
     for _, b := range rawBytes {
         switch Command(b) {
@@ -98,9 +94,122 @@ func (e *Engine) Load(filename string) error {
     return nil
 }
 
+func (e *Engine) newError(message string) *BrainfuckError {
+    return &BrainfuckError{
+        err:        fmt.Errorf("[%s:%d] %s", e.programFilename, e.commandIdx, message),
+        offset:     e.commandIdx,
+        program:    e.String(),
+    }
+}
+
 func (e *Engine) Run() *BrainfuckError {
     for e.commandIdx = 0; e.commandIdx < len(e.commands); e.commandIdx++ {
         switch e.commands[e.commandIdx] {
+            
+            // Handle these elsewhere
+            case C_INCPTR, C_DECPTR, C_INC, C_DEC, C_OUT, C_ACC:
+                if err := e.parseCommand(); err != nil {
+                    return err
+                }
+                e.status("post parseCommand()")
+
+            case C_JMPFOR:
+                if e.cells[e.cellIdx] != 0 {
+                    if err := e.parseLoop(); err != nil {
+                        return err
+                    }
+                } else {
+                    e.status("going to loop end")
+                    e.gotoLoopEnd()
+                    e.status("found loop end")
+                }
+
+            case C_JMPBAC:
+                //return e.newError("Unmatched C_JMPBAC.")
+                continue
+
+            default:
+                return e.newError("Invalid command.")
+        }
+    }
+    return nil
+}
+
+func (e *Engine) parseLoop() *BrainfuckError {
+    e.status("parseLoop() start")
+    for e.commandIdx += 1; e.commandIdx < len(e.commands); e.commandIdx++ {
+        e.status("")
+        switch e.commands[e.commandIdx] {
+            case C_INCPTR, C_DECPTR, C_INC, C_DEC, C_OUT, C_ACC:
+                if err := e.parseCommand(); err != nil {
+                    return err
+                }
+            case C_JMPBAC:
+                if e.cells[e.cellIdx] != 0 {
+                    e.status("going to loop start")
+                    e.gotoLoopStart()
+                } else {
+                    e.status("Nonzero loop end")
+                    return nil
+                }
+        }
+    }
+    e.status("parseLoop() end")
+    return nil
+}
+
+// Go to the end of the current loop
+func (e *Engine) gotoLoopEnd() *BrainfuckError {
+    lvl := 0
+    tlvl := 0
+    for e.commandIdx += 1; e.commandIdx < len(e.commands); e.commandIdx++ {
+        switch e.commands[e.commandIdx] {
+            case C_JMPFOR:
+                lvl++
+                tlvl++
+            case C_JMPBAC:
+                if lvl != 0 {
+                    lvl--
+                } else {
+                    //e.commandIdx++
+                    return nil
+                }
+        }
+    }
+    return e.newError(fmt.Sprintf("gotoLoopEnd finished without finding C_JMPBAC [%d]", tlvl))
+}
+
+func (e *Engine) gotoLoopStart() *BrainfuckError {
+    lvl := 0
+    tlvl := 0
+    for e.commandIdx -= 1; e.commandIdx > -1; e.commandIdx-- {
+        switch e.commands[e.commandIdx] {
+            case C_JMPBAC:
+                lvl++
+                tlvl++
+            case C_JMPFOR:
+                if lvl != 0 {
+                    lvl--
+                } else {
+                    return nil
+                }
+        }
+    }
+    return e.newError(fmt.Sprintf("gotoLoopStart finished without finding C_JMPFOR [%d]", tlvl))
+}
+
+func (e *Engine) status(message string) {
+    if !debug || e.commandIdx < 62 { return }
+    fmt.Printf("{%s} commandIdx: %d; command: %c; cellIdx: %d; cells: %v\n",
+        message, e.commandIdx, e.commands[e.commandIdx], e.cellIdx, e.cells)
+}
+
+func (e *Engine) parseCommand() *BrainfuckError {
+    if e.cells[0] < -5 {
+        return e.newError("cell[0] too low")
+    }
+    switch e.commands[e.commandIdx] {
+            // Increment the pointer
             case C_INCPTR:
                 e.cellIdx += 1
 
@@ -108,74 +217,40 @@ func (e *Engine) Run() *BrainfuckError {
                 if e.cellIdx >= len(e.cells) {
                     e.cells = append(e.cells, 0)
                 }
+
+            // Decrement the pointer
             case C_DECPTR:
                 e.cellIdx -= 1
 
                 // Error if cell index is below zero.
                 if e.cellIdx < 0 {
-                    return newError(e.commandIdx, e.String(), fmt.Sprintf("cellIdx below zero at %d.", e.commandIdx))
+                    debug = true
+                    e.status("")
+                    return e.newError("cellIdx below zero.")
                 }
+
+            // Increment the value
             case C_INC:
                 e.cells[e.cellIdx]++
+
+            // Decrement the value
             case C_DEC:
                 e.cells[e.cellIdx]--
+
+            // Print the cell's value
             case C_OUT:
                 fmt.Printf("%c", e.cells[e.cellIdx])
+
+            // Accept a new value
             case C_ACC:
                 var v int
                 // Caveat: User must hit enter to continue
                 if _, err := fmt.Scanf("%c", &v); err != nil {
-                    return newError(e.commandIdx, e.String(), fmt.Sprintf("C_ACC failure: %s", err))
+                    return e.newError(fmt.Sprintf("C_ACC failure: %s", err))
                 }
                 e.cells[e.cellIdx] = v
-            case C_JMPFOR:
-                // Don't jump forward unless zero
-                if e.cells[e.cellIdx] != 0 {
-                    continue
-                }
-
-                foundback := false
-                var startIdx int
-
-                // Look forward for C_JMPBAC
-                for startIdx = e.commandIdx; e.commandIdx < len(e.commands); e.commandIdx++ {
-                    if e.commands[e.commandIdx] == C_JMPBAC {
-                        e.commandIdx++
-                        foundback = true
-                        break
-                    
-                    // TODO: nesting
-                    } else if e.commands[e.commandIdx] == C_JMPFOR {
-                        return newError(e.commandIdx, e.String(), fmt.Sprintf("Nested loops unsupported at %d", e.commandIdx))
-                    }
-                }
-
-                // Didn't find C_JMPBAC
-                if !foundback {
-                    return newError(e.commandIdx, e.String(), fmt.Sprintf("Unmatched C_JMPFOR at %d", startIdx))
-                }
-            case C_JMPBAC:
-                // Continue if current cell is zero
-                if e.cells[e.cellIdx] == 0 {
-                    continue
-                }
-
-                foundforwd := false
-                var startIdx int
-
-                // Look backwards for C_JMPFOR
-                for startIdx = e.commandIdx; e.commandIdx > -1; e.commandIdx-- {
-                    if e.commands[e.commandIdx] == C_JMPFOR {
-                        foundforwd = true
-                        break
-                    }
-                }
-
-                // Went too far back
-                if !foundforwd {
-                    return newError(e.commandIdx, e.String(), fmt.Sprintf("Unmatched C_JMPBAC at %d", startIdx))
-                }
-        }
+            default:
+                return e.newError("Default on parseCommand() switch.  How did you even get here?")
     }
     return nil
 }
