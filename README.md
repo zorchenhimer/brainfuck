@@ -6,10 +6,10 @@ language written in Go.
 ## Running
 
 ```
-$ cat hello-world.bf
+$ cat examples/hello-world.bf
 ++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>.
 $ go build
-$ brainfuck hello-world.bf
+$ brainfuck examples/hello-world.bf
 Hello World!
 ```
 
