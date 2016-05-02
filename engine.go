@@ -1,4 +1,4 @@
-package bf
+package main
 
 import (
     "fmt"
@@ -147,6 +147,7 @@ func (e *Engine) Run() *BrainfuckError {
                 }
                 e.cells[e.cellIdx] = v
 
+            // Jump forwards to matching close bracket if current cell is zero
             case C_JMPFOR:
                 if e.cells[e.cellIdx] == 0 {
                     e.status("going to loop end")
@@ -156,6 +157,7 @@ func (e *Engine) Run() *BrainfuckError {
                     e.status("continuing loop")
                 }
 
+            // Jump backwards to matching close open if current cell not zero
             case C_JMPBAC:
                 if e.cells[e.cellIdx] != 0 {
                     e.status("going to loop start")
@@ -164,6 +166,7 @@ func (e *Engine) Run() *BrainfuckError {
                     e.status("Nonzero loop end")
                 }
 
+            // This shouldn't ever happen.
             default:
                 return e.newError("Invalid command.")
         }
@@ -193,6 +196,7 @@ func (e *Engine) gotoLoopEnd() *BrainfuckError {
     return e.newError(fmt.Sprintf("gotoLoopEnd finished without finding C_JMPBAC [%d]", tlvl))
 }
 
+// Go to the start of the current loop
 func (e *Engine) gotoLoopStart() *BrainfuckError {
     lvl := 0
     tlvl := 0
@@ -214,12 +218,14 @@ func (e *Engine) gotoLoopStart() *BrainfuckError {
     return e.newError(fmt.Sprintf("gotoLoopStart finished without finding C_JMPFOR [%d]", tlvl))
 }
 
+// Print debugging information
 func (e *Engine) status(message string) {
     if !debug || e.commandIdx < 62 { return }
     fmt.Printf("{%s} commandIdx: %d; command: %c; cellIdx: %d; cells: %v\n",
         message, e.commandIdx, e.commands[e.commandIdx], e.cellIdx, e.cells)
 }
 
+// Print the loaded program
 func (e *Engine) String() string {
     s := ""
     for _, c := range e.commands {
