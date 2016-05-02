@@ -106,109 +106,6 @@ func (e *Engine) Run() *BrainfuckError {
     for e.commandIdx = 0; e.commandIdx < len(e.commands); e.commandIdx++ {
         switch e.commands[e.commandIdx] {
             
-            // Handle these elsewhere
-            case C_INCPTR, C_DECPTR, C_INC, C_DEC, C_OUT, C_ACC:
-                if err := e.parseCommand(); err != nil {
-                    return err
-                }
-                e.status("post parseCommand()")
-
-            case C_JMPFOR:
-                if e.cells[e.cellIdx] != 0 {
-                    if err := e.parseLoop(); err != nil {
-                        return err
-                    }
-                } else {
-                    e.status("going to loop end")
-                    e.gotoLoopEnd()
-                    e.status("found loop end")
-                }
-
-            case C_JMPBAC:
-                //return e.newError("Unmatched C_JMPBAC.")
-                continue
-
-            default:
-                return e.newError("Invalid command.")
-        }
-    }
-    return nil
-}
-
-func (e *Engine) parseLoop() *BrainfuckError {
-    e.status("parseLoop() start")
-    for e.commandIdx += 1; e.commandIdx < len(e.commands); e.commandIdx++ {
-        e.status("")
-        switch e.commands[e.commandIdx] {
-            case C_INCPTR, C_DECPTR, C_INC, C_DEC, C_OUT, C_ACC:
-                if err := e.parseCommand(); err != nil {
-                    return err
-                }
-            case C_JMPBAC:
-                if e.cells[e.cellIdx] != 0 {
-                    e.status("going to loop start")
-                    e.gotoLoopStart()
-                } else {
-                    e.status("Nonzero loop end")
-                    return nil
-                }
-        }
-    }
-    e.status("parseLoop() end")
-    return nil
-}
-
-// Go to the end of the current loop
-func (e *Engine) gotoLoopEnd() *BrainfuckError {
-    lvl := 0
-    tlvl := 0
-    for e.commandIdx += 1; e.commandIdx < len(e.commands); e.commandIdx++ {
-        switch e.commands[e.commandIdx] {
-            case C_JMPFOR:
-                lvl++
-                tlvl++
-            case C_JMPBAC:
-                if lvl != 0 {
-                    lvl--
-                } else {
-                    //e.commandIdx++
-                    return nil
-                }
-        }
-    }
-    return e.newError(fmt.Sprintf("gotoLoopEnd finished without finding C_JMPBAC [%d]", tlvl))
-}
-
-func (e *Engine) gotoLoopStart() *BrainfuckError {
-    lvl := 0
-    tlvl := 0
-    for e.commandIdx -= 1; e.commandIdx > -1; e.commandIdx-- {
-        switch e.commands[e.commandIdx] {
-            case C_JMPBAC:
-                lvl++
-                tlvl++
-            case C_JMPFOR:
-                if lvl != 0 {
-                    lvl--
-                } else {
-                    return nil
-                }
-        }
-    }
-    return e.newError(fmt.Sprintf("gotoLoopStart finished without finding C_JMPFOR [%d]", tlvl))
-}
-
-func (e *Engine) status(message string) {
-    if !debug || e.commandIdx < 62 { return }
-    fmt.Printf("{%s} commandIdx: %d; command: %c; cellIdx: %d; cells: %v\n",
-        message, e.commandIdx, e.commands[e.commandIdx], e.cellIdx, e.cells)
-}
-
-func (e *Engine) parseCommand() *BrainfuckError {
-    if e.cells[0] < -5 {
-        return e.newError("cell[0] too low")
-    }
-    switch e.commands[e.commandIdx] {
             // Increment the pointer
             case C_INCPTR:
                 e.cellIdx += 1
@@ -249,10 +146,78 @@ func (e *Engine) parseCommand() *BrainfuckError {
                     return e.newError(fmt.Sprintf("C_ACC failure: %s", err))
                 }
                 e.cells[e.cellIdx] = v
+
+            case C_JMPFOR:
+                if e.cells[e.cellIdx] == 0 {
+                    e.status("going to loop end")
+                    e.gotoLoopEnd()
+                    e.status("found loop end")
+                } else {
+                    e.status("continuing loop")
+                }
+
+            case C_JMPBAC:
+                if e.cells[e.cellIdx] != 0 {
+                    e.status("going to loop start")
+                    e.gotoLoopStart()
+                } else {
+                    e.status("Nonzero loop end")
+                }
+
             default:
-                return e.newError("Default on parseCommand() switch.  How did you even get here?")
+                return e.newError("Invalid command.")
+        }
     }
     return nil
+}
+
+// Go to the end of the current loop
+func (e *Engine) gotoLoopEnd() *BrainfuckError {
+    lvl := 0
+    tlvl := 0
+    for e.commandIdx += 1; e.commandIdx < len(e.commands); e.commandIdx++ {
+        switch e.commands[e.commandIdx] {
+            case C_JMPFOR:
+                lvl++
+                tlvl++
+            case C_JMPBAC:
+                if lvl > 0 {
+                    lvl--
+                } else if lvl < 0 {
+                    return e.newError("nest level too low in gotoLoopStart()")
+                } else {
+                    return nil
+                }
+        }
+    }
+    return e.newError(fmt.Sprintf("gotoLoopEnd finished without finding C_JMPBAC [%d]", tlvl))
+}
+
+func (e *Engine) gotoLoopStart() *BrainfuckError {
+    lvl := 0
+    tlvl := 0
+    for e.commandIdx -= 1; e.commandIdx > -1; e.commandIdx-- {
+        switch e.commands[e.commandIdx] {
+            case C_JMPBAC:
+                lvl++
+                tlvl++
+            case C_JMPFOR:
+                if lvl > 0 {
+                    lvl--
+                } else if lvl < 0 {
+                    return e.newError("nest level too low in gotoLoopStart()")
+                } else {
+                    return nil
+                }
+        }
+    }
+    return e.newError(fmt.Sprintf("gotoLoopStart finished without finding C_JMPFOR [%d]", tlvl))
+}
+
+func (e *Engine) status(message string) {
+    if !debug || e.commandIdx < 62 { return }
+    fmt.Printf("{%s} commandIdx: %d; command: %c; cellIdx: %d; cells: %v\n",
+        message, e.commandIdx, e.commands[e.commandIdx], e.cellIdx, e.cells)
 }
 
 func (e *Engine) String() string {
