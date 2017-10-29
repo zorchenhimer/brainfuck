@@ -4,6 +4,7 @@ import (
     "fmt"
     "log"
     "os"
+    "path/filepath"
 )
 
 func main() {
@@ -13,8 +14,14 @@ func main() {
         log.Fatal("Too many input files.")
     }
 
+    var err error
     engine := NewEngine()
-    err := engine.Load(os.Args[1])
+    if filepath.Ext(os.Args[1]) == ".ff" {
+        err = engine.FuckFuck(os.Args[1])
+    } else {
+        err = engine.Load(os.Args[1])
+    }
+
     if err != nil {
         log.Fatalf("Error loading source: %s", err)
     }

@@ -1,7 +1,11 @@
 # Brainfuck Interpreter
 
 A simple interpreter for the [brainfuck](https://en.wikipedia.org/wiki/Brainfuck)
-language written in Go. 
+language written in Go.
+
+Also runs programs written in the [FuckFuck](https://github.com/MiffOttah/fuckfuck)
+dialect because lol.  Source files ending in .ff are assumed to be FuckFuck,
+everything else is assumed to be vanilla Brainfuck.
 
 ## Running
 

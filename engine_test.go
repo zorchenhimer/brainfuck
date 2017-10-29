@@ -135,6 +135,13 @@ func TestCollatz(t *testing.T) {
     })
 }
 
+func TestFuckFuck(t *testing.T) {
+    runFileTest(t, testCase{
+        Source: "testing/fuckfuck.ff",
+        Output: "testing/fuckfuck.out",
+    })
+}
+
 func TestCounter(t *testing.T) {
     runFileTest(t, testCase{
         Source: "testing/Counter.b",

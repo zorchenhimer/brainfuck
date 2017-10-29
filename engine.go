@@ -4,6 +4,7 @@ import (
     "fmt"
     "io/ioutil"
     "os"
+    "strings"
 )
 
 var debug bool = false
@@ -39,6 +40,19 @@ const (
     C_ACC       Command = ','   // Accept vaule
     C_JMPFOR    Command = '['   // Jump forward
     C_JMPBAC    Command = ']'   // Jump backwards
+)
+
+// https://github.com/MiffOttah/fuckfuck
+type FFCommand string
+const (
+    FF_INCPTR   FFCommand = "ass"
+    FF_DECPTR   FFCommand = "bitch"
+    FF_INC      FFCommand = "cunt"
+    FF_DEC      FFCommand = "damn"
+    FF_OUT      FFCommand = "dick"
+    FF_ACC      FFCommand = "fuck"
+    FF_JMPFOR   FFCommand = "shit"
+    FF_JMPBAC   FFCommand = "twat"
 )
 
 func (b *BrainfuckError) String() string {
@@ -113,6 +127,45 @@ func (e *Engine) Load(filename string) error {
                 continue
         }
     }
+    return nil
+}
+
+func (e *Engine) FuckFuck(filename string) error {
+    raw, err := ioutil.ReadFile(filename)
+    if err != nil {
+        return err
+    }
+
+    // Reset engine on each load
+    e.reset()
+    e.programFilename = filename
+
+    words := strings.Split(strings.Replace(strings.Replace(strings.ToLower(fmt.Sprintf("%s", raw)), "\r\n", " ", -1), "\n", " ", -1), " ")
+    for _, w := range words {
+        var cmd Command
+        switch FFCommand(w) {
+            case FF_INCPTR:
+                cmd = C_INCPTR
+            case FF_DECPTR:
+                cmd = C_DECPTR
+            case FF_INC:
+                cmd = C_INC
+            case FF_DEC:
+                cmd = C_DEC
+            case FF_OUT:
+                cmd = C_OUT
+            case FF_ACC:
+                cmd = C_ACC
+            case FF_JMPFOR:
+                cmd = C_JMPFOR
+            case FF_JMPBAC:
+                cmd = C_JMPBAC
+            default:
+                continue
+        }
+        e.commands = append(e.commands, cmd)
+    }
+
     return nil
 }
 
