@@ -49,7 +49,6 @@ func exists(path string) bool {
 
 func runFileTest(t *testing.T, tc testCase) {
     e := newTestEngine()
-    t.Helper()
     var input *os.File
     var expected []byte
     var err error = nil
@@ -114,21 +113,22 @@ func TestBitwidth(t *testing.T) {
 }
 
 func TestHello(t *testing.T) {
-    runFileTest(t, testCase{
+    runTest(t, testCase{
         Source: "testing/Hello.b",
         Output: "testing/Hello.out",
     })
 }
 
 func TestHello2(t *testing.T) {
-    runFileTest(t, testCase{
+    runTest(t, testCase{
         Source: "testing/Hello2.b",
         Output: "testing/Hello2.out",
     })
 }
 
+
 func TestCollatz(t *testing.T) {
-    runFileTest(t, testCase{
+    runTest(t, testCase{
         Source: "testing/Collatz.b",
         Output: "testing/Collatz.out",
         Input: "testing/Collatz.in",
@@ -136,14 +136,14 @@ func TestCollatz(t *testing.T) {
 }
 
 func TestFuckFuck(t *testing.T) {
-    runFileTest(t, testCase{
+    runTest(t, testCase{
         Source: "testing/fuckfuck.ff",
         Output: "testing/fuckfuck.out",
     })
 }
 
 func TestCounter(t *testing.T) {
-    runFileTest(t, testCase{
+    runTest(t, testCase{
         Source: "testing/Counter.b",
         Output: "testing/Counter.out",
     })
