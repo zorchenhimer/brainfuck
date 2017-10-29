@@ -18,6 +18,9 @@ type Engine struct {
     nestLevel   int
 
     programFilename string
+
+    testing     bool
+    stdout      []byte
 }
 
 type BrainfuckError struct {
@@ -27,7 +30,6 @@ type BrainfuckError struct {
 }
 
 type Command rune
-
 const (
     C_INCPTR    Command = '>'   // Increment pointer
     C_DECPTR    Command = '<'   // Decrement pointer
@@ -57,6 +59,10 @@ func (b *BrainfuckError) HelpString() string {
     return b.program + "\n" + s + "^ here"
 }
 
+func (b *BrainfuckError) HasError() bool {
+    return b.err != nil
+}
+
 func NewEngine() *Engine {
     e := &Engine{
         cellIdx:    0,
@@ -67,6 +73,15 @@ func NewEngine() *Engine {
         commands:   []Command{},
     }
     return e
+}
+
+func (e *Engine) reset() {
+    e.cellIdx = 0
+    e.commandIdx = 0
+    e.nestLevel = 0
+    e.cells = []int{0}
+    e.commands = []Command{}
+    e.programFilename = ""
 }
 
 func (e *Engine) Load(filename string) error {
@@ -80,7 +95,14 @@ func (e *Engine) Load(filename string) error {
     if err != nil {
         return err
     }
+
+    // Reset engine on each load
+    e.reset()
     e.programFilename = filename
+
+    if e.stdout != nil {
+        e.stdout = []byte{}
+    }
 
     for _, b := range rawBytes {
         switch Command(b) {
@@ -105,7 +127,7 @@ func (e *Engine) newError(message string) *BrainfuckError {
 func (e *Engine) Run() *BrainfuckError {
     for e.commandIdx = 0; e.commandIdx < len(e.commands); e.commandIdx++ {
         switch e.commands[e.commandIdx] {
-            
+
             // Increment the pointer
             case C_INCPTR:
                 e.cellIdx += 1
@@ -128,15 +150,31 @@ func (e *Engine) Run() *BrainfuckError {
 
             // Increment the value
             case C_INC:
+                if e.cellIdx < 0 {
+                    return e.newError("C_INC: negative cellIdx")
+                }
+                if e.cellIdx >= len(e.cells) {
+                    return e.newError("C_INC: cellIdx out of range")
+                }
                 e.cells[e.cellIdx]++
 
             // Decrement the value
             case C_DEC:
+                if e.cellIdx < 0 {
+                    return e.newError("C_DEC: negative cellIdx")
+                }
+                if e.cellIdx >= len(e.cells) {
+                    return e.newError("C_DEC: cellIdx out of range")
+                }
                 e.cells[e.cellIdx]--
 
             // Print the cell's value
             case C_OUT:
-                fmt.Printf("%c", e.cells[e.cellIdx])
+                if e.testing {
+                    e.stdout = append(e.stdout, byte(e.cells[e.cellIdx]))
+                } else {
+                    fmt.Printf("%c", e.cells[e.cellIdx])
+                }
 
             // Accept a new value
             case C_ACC:
@@ -159,6 +197,10 @@ func (e *Engine) Run() *BrainfuckError {
 
             // Jump backwards to matching close open if current cell not zero
             case C_JMPBAC:
+                if e.cells[e.cellIdx] < -1000 {
+                    return e.newError("C_JMPBAC cell value less than -1000")
+                }
+
                 if e.cells[e.cellIdx] != 0 {
                     e.status("going to loop start")
                     e.gotoLoopStart()

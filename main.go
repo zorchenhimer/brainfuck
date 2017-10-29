@@ -19,8 +19,8 @@ func main() {
         log.Fatalf("Error loading source: %s", err)
     }
 
-    if err := engine.Run(); err != nil {
+    if bferr := engine.Run(); bferr != nil {
         fmt.Println("")
-        log.Fatalf("Run failed: %s\n", err.String())
+        log.Fatalf("Run failed: %s\n", bferr.String())
     }
 }
