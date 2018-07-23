@@ -136,6 +136,13 @@ func TestHello2(t *testing.T) {
     })
 }
 
+// Cell index goes negative and fails
+//func TestBench(t *testing.T) {
+//    runFileTest(t, testCase{
+//        Source: "testing/Bench.b",
+//        Output: "testing/Bench.out",
+//    })
+//}
 
 func TestCollatz(t *testing.T) {
     runTest(t, testCase{
@@ -152,9 +159,25 @@ func TestFuckFuck(t *testing.T) {
     })
 }
 
+// Fails at offset 2234
+//func TestLife(t *testing.T) {
+//    runTest(t, testCase{
+//        Source: "testing/Life.b",
+//        Output: "testing/Life.out",
+//        Input: "testing/Life.in",
+//    })
+//}
+
 func TestCounter(t *testing.T) {
     runTest(t, testCase{
         Source: "testing/Counter.b",
         Output: "testing/Counter.out",
+    })
+}
+
+func TestTribit(t *testing.T) {
+    runTest(t, testCase{
+        Source: "testing/Tribit.b",
+        OutputText: "32 bit cells\n",     // This'll probably fail with different configurations
     })
 }
