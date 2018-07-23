@@ -2,7 +2,7 @@ package main
 
 import (
     "bytes"
-    "fmt"
+    //"fmt"
     "io/ioutil"
     "os"
     "path/filepath"
@@ -38,6 +38,7 @@ type testCase struct {
     Input           string
     Output          string
     OutputExpected  bool
+    OutputText      string
 }
 
 func exists(path string) bool {
@@ -63,15 +64,15 @@ func runFileTest(t *testing.T, tc testCase) {
         t.Fatalf("Unable to load file: %s", err)
     }
 
-    // Check for input commands and skip those tests
+    // Check for input commands and skip those tests if no input file is supplied
     if len(tc.Input) == 0 {
-        for _, cmd := range e.commands {
-            if cmd == C_ACC {
-                fmt.Sprintf("Skipping %s due to finding an input command.", tc.Source)
-                t.Skipf("Skipping %s due to finding an input command.", tc.Source)
-                continue
-            }
-        }
+        //for _, cmd := range e.commands {
+        //    if cmd == C_ACC {
+        //        fmt.Sprintf("Skipping %s due to finding an input command.", tc.Source)
+        //        t.Skipf("Skipping %s due to finding an input command.", tc.Source)
+        //        continue
+        //    }
+        //}
     } else {
         input, err = os.Open(tc.Input)
         if err != nil {
@@ -81,9 +82,13 @@ func runFileTest(t *testing.T, tc testCase) {
         os.Stdin = input
     }
 
-    expected, err = ioutil.ReadFile(tc.Output)
-    if err != nil {
-        t.Fatalf("Unable to load output file: %s", err)
+    if len(tc.OutputText) > 0 {
+        expected = []byte(tc.OutputText)
+    } else {
+        expected, err = ioutil.ReadFile(tc.Output)
+        if err != nil {
+            t.Fatalf("Unable to load output file: %s", err)
+        }
     }
 
     if bferr := e.Run(); bferr != nil {
@@ -100,16 +105,21 @@ func runFileTest(t *testing.T, tc testCase) {
     }
 }
 
+// FIXME: What should the output of this test *really* be?
 func TestBitwidth(t *testing.T) {
-    if err := engine.Load("testing/bitwidth.b"); err != nil {
-        t.Fatalf("Unable to load file: %s", err)
-    }
+    //if err := engine.Load("testing/bitwidth.b"); err != nil {
+    //    t.Fatalf("Unable to load file: %s", err)
+    //}
 
-    if err := engine.Run(); err != nil {
-        t.Fatalf("Run returned an error: %s", err)
-    }
+    //if err := engine.Run(); err != nil {
+    //    t.Fatalf("Run returned an error: %s", err)
+    //}
 
-    t.Logf("bitwidth stdout: %s", engine.stdout)
+    //t.Logf("bitwidth stdout: %s", engine.stdout)
+    runTest(t, testCase{
+        Source: "testing/bitwidth.b",
+        OutputText: "Hello, world!\n",
+    })
 }
 
 func TestHello(t *testing.T) {
