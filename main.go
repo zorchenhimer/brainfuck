@@ -5,6 +5,7 @@ import (
     "log"
     "os"
     "path/filepath"
+    "strings"
 )
 
 func main() {
@@ -16,10 +17,14 @@ func main() {
 
     var err error
     engine := NewEngine()
-    if filepath.Ext(os.Args[1]) == ".ff" {
-        err = engine.FuckFuck(os.Args[1])
-    } else {
-        err = engine.Load(os.Args[1])
+
+    switch strings.ToLower(filepath.Ext(os.Args[1])) {
+        case ".ff":
+            err = engine.FuckFuck(os.Args[1])
+        case ".ten":
+            err = engine.TenX(os.Args[1])
+        default:
+            err = engine.Load(os.Args[1])
     }
 
     if err != nil {

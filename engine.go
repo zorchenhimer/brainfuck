@@ -40,6 +40,9 @@ const (
     C_ACC       Command = ','   // Accept vaule
     C_JMPFOR    Command = '['   // Jump forward
     C_JMPBAC    Command = ']'   // Jump backwards
+    // These are not implemented yet
+    C_DEBUG     Command = '#'   // Debug dump
+    C_DATA      Command = '!'   // Data section to read from for input
 )
 
 // https://github.com/MiffOttah/fuckfuck
@@ -53,6 +56,21 @@ const (
     FF_ACC      FFCommand = "fuck"
     FF_JMPFOR   FFCommand = "shit"
     FF_JMPBAC   FFCommand = "twat"
+)
+
+type TenXCommand rune
+const (
+    TX_INCPTR   TenXCommand = '\u2715'
+    TX_DECPTR   TenXCommand = '\u00D7'
+    TX_INC      TenXCommand = '\u0058'
+    TX_DEC      TenXCommand = '\u0087'
+    TX_OUT      TenXCommand = '\u2716'
+    TX_ACC      TenXCommand = '\U0001D4CD'
+    TX_JMPFOR   TenXCommand = '\u2717'
+    TX_JMPBAC   TenXCommand = '\u2613'
+    // These are not implemented yet
+    TX_DEBUG    TenXCommand = '\u24CD'
+    TX_DATA     TenXCommand = '\u2612'
 )
 
 func (b *BrainfuckError) String() string {
@@ -159,6 +177,44 @@ func (e *Engine) FuckFuck(filename string) error {
             case FF_JMPFOR:
                 cmd = C_JMPFOR
             case FF_JMPBAC:
+                cmd = C_JMPBAC
+            default:
+                continue
+        }
+        e.commands = append(e.commands, cmd)
+    }
+
+    return nil
+}
+
+func (e *Engine) TenX(filename string) error {
+    raw, err := ioutil.ReadFile(filename)
+    if err != nil {
+        return err
+    }
+
+    // Reset engine on each load
+    e.reset()
+    e.programFilename = filename
+
+    for _, r := range raw {
+        var cmd Command
+        switch TenXCommand(r) {
+            case TX_INCPTR:
+                cmd = C_INCPTR
+            case TX_DECPTR:
+                cmd = C_DECPTR
+            case TX_INC:
+                cmd = C_INC
+            case TX_DEC:
+                cmd = C_DEC
+            case TX_OUT:
+                cmd = C_OUT
+            case TX_ACC:
+                cmd = C_ACC
+            case TX_JMPFOR:
+                cmd = C_JMPFOR
+            case TX_JMPBAC:
                 cmd = C_JMPBAC
             default:
                 continue
