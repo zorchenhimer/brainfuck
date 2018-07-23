@@ -3,7 +3,6 @@ package main
 import (
     "fmt"
     "io/ioutil"
-    "os"
     "strings"
 )
 
@@ -117,13 +116,8 @@ func (e *Engine) reset() {
 }
 
 func (e *Engine) Load(filename string) error {
-    file, err := os.Open(filename)
-    if err != nil {
-        return err
-    }
-    defer file.Close()
 
-    rawBytes, err := ioutil.ReadAll(file)
+    rawBytes, err := ioutil.ReadFile(filename)
     if err != nil {
         return err
     }
