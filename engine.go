@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	//"io/ioutil"
+	"io"
+	"os"
+	"bufio"
 	"strings"
 )
-
-var debug bool = false
 
 type Engine struct {
 	cellIdx int
@@ -21,6 +22,11 @@ type Engine struct {
 
 	testing bool
 	stdout  []byte
+
+	Debug bool
+
+	Stdin io.Reader
+	Stdout io.Writer
 }
 
 type BrainfuckError struct {
@@ -97,68 +103,56 @@ func (b *BrainfuckError) HasError() bool {
 	return b.err != nil
 }
 
-func NewEngine() *Engine {
-	e := &Engine{
-		cellIdx:    0,
-		commandIdx: 0,
-		nestLevel:  0,
-
-		cells:    []int{0},
-		commands: []Command{},
-	}
-	return e
-}
-
 func (e *Engine) reset() {
 	e.cellIdx = 0
 	e.commandIdx = 0
 	e.nestLevel = 0
 	e.cells = []int{0}
-	e.commands = []Command{}
+	//e.commands = []Command{}
 	e.programFilename = ""
 }
 
-func (e *Engine) Load(filename string) error {
-
-	rawBytes, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return err
+func Brainfuck(input io.Reader) (*Engine, error) {
+	reader := bufio.NewReader(input)
+	engine := &Engine{
+		cells:    []int{0},
+		commands: []Command{},
 	}
 
-	// Reset engine on each load
-	e.reset()
-	e.programFilename = filename
+	var err error
+	for err == nil {
+		var r rune
+		r, _, err = reader.ReadRune()
+		if err != nil && err != io.EOF {
+			return nil, err
+		}
 
-	if e.stdout != nil {
-		e.stdout = []byte{}
-	}
-
-	for _, b := range rawBytes {
-		switch Command(b) {
+		switch Command(r) {
 		case C_INCPTR, C_DECPTR, C_INC, C_DEC, C_OUT, C_ACC, C_JMPFOR, C_JMPBAC:
-			e.commands = append(e.commands, Command(b))
-		default:
-			// Ignore all other characters
-			continue
+			engine.commands = append(engine.commands, Command(r))
 		}
 	}
-	return nil
+
+	return engine, nil
 }
 
-func (e *Engine) FuckFuck(filename string) error {
-	raw, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return err
+func FuckFuck(input io.Reader) (*Engine, error) {
+	reader := bufio.NewReader(input)
+	engine := &Engine{
+		cells:    []int{0},
+		commands: []Command{},
 	}
 
-	// Reset engine on each load
-	e.reset()
-	e.programFilename = filename
+	var err error
+	for err == nil {
+		var word string
+		word, err = reader.ReadString(' ')
+		if err != nil && err != io.EOF {
+			return nil, err
+		}
 
-	words := strings.Split(strings.Replace(strings.Replace(strings.ToLower(fmt.Sprintf("%s", raw)), "\r\n", " ", -1), "\n", " ", -1), " ")
-	for _, w := range words {
 		var cmd Command
-		switch FFCommand(w) {
+		switch FFCommand(strings.ToLower(word)) {
 		case FF_INCPTR:
 			cmd = C_INCPTR
 		case FF_DECPTR:
@@ -178,23 +172,27 @@ func (e *Engine) FuckFuck(filename string) error {
 		default:
 			continue
 		}
-		e.commands = append(e.commands, cmd)
+		engine.commands = append(engine.commands, cmd)
 	}
 
-	return nil
+	return engine, nil
 }
 
-func (e *Engine) TenX(filename string) error {
-	raw, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return err
+func TenX(input io.Reader) (*Engine, error) {
+	reader := bufio.NewReader(input)
+	engine := &Engine{
+		cells:    []int{0},
+		commands: []Command{},
 	}
 
-	// Reset engine on each load
-	e.reset()
-	e.programFilename = filename
+	var err error
+	for err == nil {
+		var r rune
+		r, _, err = reader.ReadRune()
+		if err != nil && err != io.EOF {
+			return nil, err
+		}
 
-	for _, r := range raw {
 		var cmd Command
 		switch TenXCommand(r) {
 		case TX_INCPTR:
@@ -216,10 +214,10 @@ func (e *Engine) TenX(filename string) error {
 		default:
 			continue
 		}
-		e.commands = append(e.commands, cmd)
+		engine.commands = append(engine.commands, cmd)
 	}
 
-	return nil
+	return engine, nil
 }
 
 func (e *Engine) newError(message string) *BrainfuckError {
@@ -231,6 +229,14 @@ func (e *Engine) newError(message string) *BrainfuckError {
 }
 
 func (e *Engine) Run() *BrainfuckError {
+	if e.Stdout == nil {
+		e.Stdout = os.Stdout
+	}
+
+	if e.Stdin == nil {
+		e.Stdin = os.Stdin
+	}
+
 	for e.commandIdx = 0; e.commandIdx < len(e.commands); e.commandIdx++ {
 		switch e.commands[e.commandIdx] {
 
@@ -249,7 +255,7 @@ func (e *Engine) Run() *BrainfuckError {
 
 			// Error if cell index is below zero.
 			if e.cellIdx < 0 {
-				debug = true
+				e.Debug = true
 				e.status("")
 				return e.newError("cellIdx below zero.")
 			}
@@ -276,17 +282,13 @@ func (e *Engine) Run() *BrainfuckError {
 
 		// Print the cell's value
 		case C_OUT:
-			if e.testing {
-				e.stdout = append(e.stdout, byte(e.cells[e.cellIdx]))
-			} else {
-				fmt.Printf("%c", e.cells[e.cellIdx])
-			}
+			fmt.Fprintf(e.Stdout, "%c", e.cells[e.cellIdx])
 
 		// Accept a new value
 		case C_ACC:
 			var v int
 			// Caveat: User must hit enter to continue
-			if _, err := fmt.Scanf("%c", &v); err != nil {
+			if _, err := fmt.Fscanf(e.Stdin, "%c", &v); err != nil {
 				return e.newError(fmt.Sprintf("C_ACC failure: %s", err))
 			}
 			e.cells[e.cellIdx] = v
@@ -316,7 +318,7 @@ func (e *Engine) Run() *BrainfuckError {
 
 		// This shouldn't ever happen.
 		default:
-			return e.newError("Invalid command.")
+			return e.newError(fmt.Sprintf("Invalid command: %q", e.commands[e.commandIdx]))
 		}
 	}
 	return nil
@@ -368,7 +370,7 @@ func (e *Engine) gotoLoopStart() *BrainfuckError {
 
 // Print debugging information
 func (e *Engine) status(message string) {
-	if !debug || e.commandIdx < 62 {
+	if !e.Debug || e.commandIdx < 62 {
 		return
 	}
 	fmt.Printf("{%s} commandIdx: %d; command: %c; cellIdx: %d; cells: %v\n",

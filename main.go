@@ -6,30 +6,47 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/alexflint/go-arg"
 )
 
+type Arguments struct {
+	Input string `arg:"positional,required"`
+	Debug bool `arg:"-d,--debug" help:"Turn on debugging"`
+}
+
 func main() {
-	if len(os.Args) == 1 {
-		log.Fatal("Missing input file.")
-	} else if len(os.Args) > 2 {
-		log.Fatal("Too many input files.")
+	var args Arguments
+	arg.MustParse(&args)
+
+	fmt.Println("Input:", args.Input)
+
+	file, err := os.Open(args.Input)
+	if err != nil {
+		log.Fatal(err)
 	}
+	defer file.Close()
 
-	var err error
-	engine := NewEngine()
+	var engine *Engine
 
-	switch strings.ToLower(filepath.Ext(os.Args[1])) {
+	switch strings.ToLower(filepath.Ext(args.Input)) {
 	case ".ff":
-		err = engine.FuckFuck(os.Args[1])
+		engine, err = FuckFuck(file)
 	case ".ten":
-		err = engine.TenX(os.Args[1])
+		engine, err = TenX(file)
 	default:
-		err = engine.Load(os.Args[1])
+		engine, err = Brainfuck(file)
 	}
 
 	if err != nil {
 		log.Fatalf("Error loading source: %s", err)
 	}
+
+	if args.Debug {
+		fmt.Println("Engine:", engine)
+	}
+
+	//engine.Debug = args.debug
 
 	if bferr := engine.Run(); bferr != nil {
 		fmt.Println("")
