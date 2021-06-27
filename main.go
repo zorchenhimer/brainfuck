@@ -8,18 +8,34 @@ import (
 	"strings"
 
 	"github.com/alexflint/go-arg"
+	"github.com/zorchenhimer/brainfuck/dialects"
 )
 
 type Arguments struct {
-	Input string `arg:"positional,required"`
-	Debug bool `arg:"-d,--debug" help:"Turn on debugging"`
+	Input string `arg:"positional" help:"Input filename."`
+	Debug bool `arg:"-d,--debug" help:"Turn on debugging."`
+	Language string `arg:"-l,--language" help:"Specific brainfuck dialect to use.  See --dialects for full list."`
+	Dialects bool `arg:"--dialects" help:"List all available dialects."`
 }
 
 func main() {
 	var args Arguments
 	arg.MustParse(&args)
 
-	fmt.Println("Input:", args.Input)
+	if args.Dialects {
+		d := []string{}
+		for name, _ := range dialects.Dialects {
+			d = append(d, name)
+		}
+
+		fmt.Println("Available dialects:", strings.Join(d, ", "))
+		os.Exit(0)
+	}
+
+	if args.Input == "" {
+		fmt.Println("No input file given")
+		os.Exit(1)
+	}
 
 	file, err := os.Open(args.Input)
 	if err != nil {
@@ -29,16 +45,21 @@ func main() {
 
 	var engine *Engine
 
-	switch strings.ToLower(filepath.Ext(args.Input)) {
-	case ".ff":
-		engine, err = FuckFuck(file)
-	case ".ten":
-		engine, err = TenX(file)
-	case ".pika":
-		engine, err = Pikachu(file)
-	default:
-		engine, err = Brainfuck(file)
+	lang := "Brainfuck"
+	if args.Language != "" {
+		lang = args.Language
+	} else {
+		switch strings.ToLower(filepath.Ext(args.Input)) {
+		case ".ff":
+			lang = "FuckFuck"
+		case ".ten":
+			lang = "TenX"
+		case ".pika":
+			lang = "Pikalang"
+		}
 	}
+
+	engine, err = Load(file, lang)
 
 	if err != nil {
 		log.Fatalf("Error loading source: %s", err)
@@ -48,7 +69,7 @@ func main() {
 		fmt.Println("Engine:", engine)
 	}
 
-	//engine.Debug = args.debug
+	engine.Debug = args.Debug
 
 	if bferr := engine.Run(); bferr != nil {
 		fmt.Println("")

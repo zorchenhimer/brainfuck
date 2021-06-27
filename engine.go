@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
-	//"io/ioutil"
 	"io"
 	"os"
 	"bufio"
 	"strings"
+	"unicode"
+
+	"github.com/zorchenhimer/brainfuck/dialects"
 )
 
 type Engine struct {
@@ -51,49 +53,88 @@ const (
 	C_DATA  Command = '!' // Data section to read from for input
 )
 
-// https://github.com/MiffOttah/fuckfuck
-type FFCommand string
+func Load(reader io.Reader, dialect string) (*Engine, error) {
+	d, ok := dialects.Dialects[dialect]
+	if !ok {
+		return nil, fmt.Errorf("Dialect %q doesn't exist", dialect)
+	}
 
-const (
-	FF_INCPTR FFCommand = "ass"
-	FF_DECPTR FFCommand = "bitch"
-	FF_INC    FFCommand = "cunt"
-	FF_DEC    FFCommand = "damn"
-	FF_OUT    FFCommand = "dick"
-	FF_ACC    FFCommand = "fuck"
-	FF_JMPFOR FFCommand = "shit"
-	FF_JMPBAC FFCommand = "twat"
-)
+	if d.Type() == dialects.RuneLang {
+		return runeLang(reader, d)
+	}
+	return wordLang(reader, d)
+}
 
-type TenXCommand rune
+func runeLang(input io.Reader, dialect dialects.Dialect) (*Engine, error) {
+	reader := bufio.NewReader(input)
+	engine := &Engine{
+		cells:    []int{0},
+		commands: []Command{},
+	}
 
-const (
-	TX_INCPTR TenXCommand = '\u2715'
-	TX_DECPTR TenXCommand = '\u00D7'
-	TX_INC    TenXCommand = '\u0058'
-	TX_DEC    TenXCommand = '\u0087'
-	TX_OUT    TenXCommand = '\u2716'
-	TX_ACC    TenXCommand = '\U0001D4CD'
-	TX_JMPFOR TenXCommand = '\u2717'
-	TX_JMPBAC TenXCommand = '\u2613'
-	// These are not implemented yet
-	TX_DEBUG TenXCommand = '\u24CD'
-	TX_DATA  TenXCommand = '\u2612'
-)
+	runeMap := dialect.(dialects.RuneMap)
 
-// https://www.dcode.fr/pikalang-language
-type PikaCommand string
+	var err error
+	for err == nil {
+		var r rune
+		r, _, err = reader.ReadRune()
+		if err != nil && err != io.EOF {
+			return nil, err
+		}
 
-const (
-	PK_INCPTR PikaCommand = "pipi"
-	PK_DECPTR PikaCommand = "pichu"
-	PK_INC    PikaCommand = "pi"
-	PK_DEC    PikaCommand = "ka"
-	PK_OUT    PikaCommand = "pikachu"
-	PK_ACC    PikaCommand = "pikapi"
-	PK_JMPFOR PikaCommand = "pika"
-	PK_JMPBAC PikaCommand = "chu"
-)
+		if cmd, ok := runeMap[r]; ok {
+			engine.commands = append(engine.commands, Command(cmd))
+		}
+	}
+
+	if len(engine.commands) == 0 {
+		return nil, fmt.Errorf("No commands read from source. Was the correct dialect used?")
+	}
+	return engine, nil
+}
+
+func wordLang(input io.Reader, dialect dialects.Dialect) (*Engine, error) {
+	reader := bufio.NewReader(input)
+	engine := &Engine{
+		cells:    []int{0},
+		commands: []Command{},
+	}
+
+	wordMap := dialect.(dialects.WordMap)
+
+	var err error
+	for err == nil {
+		word := strings.Builder{}
+		for {
+			var r rune
+			r, _, err = reader.ReadRune()
+			if err != nil {
+				if err != io.EOF {
+					return nil, err
+				}
+				break
+			}
+
+			if unicode.IsSpace(r) {
+				break
+			}
+
+			_, err = word.WriteRune(r)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		if cmd, ok := wordMap[word.String()]; ok {
+			engine.commands = append(engine.commands, Command(cmd))
+		}
+	}
+
+	if len(engine.commands) == 0 {
+		return nil, fmt.Errorf("No commands read from source. Was the correct dialect used?")
+	}
+	return engine, nil
+}
 
 func (b *BrainfuckError) String() string {
 	return b.Error() + "\n" + b.HelpString()
@@ -124,164 +165,6 @@ func (e *Engine) reset() {
 	e.cells = []int{0}
 	//e.commands = []Command{}
 	e.programFilename = ""
-}
-
-func Brainfuck(input io.Reader) (*Engine, error) {
-	reader := bufio.NewReader(input)
-	engine := &Engine{
-		cells:    []int{0},
-		commands: []Command{},
-	}
-
-	var err error
-	for err == nil {
-		var r rune
-		r, _, err = reader.ReadRune()
-		if err != nil && err != io.EOF {
-			return nil, err
-		}
-
-		switch Command(r) {
-		case C_INCPTR, C_DECPTR, C_INC, C_DEC, C_OUT, C_ACC, C_JMPFOR, C_JMPBAC:
-			engine.commands = append(engine.commands, Command(r))
-		}
-	}
-
-	return engine, nil
-}
-
-func FuckFuck(input io.Reader) (*Engine, error) {
-	reader := bufio.NewReader(input)
-	engine := &Engine{
-		cells:    []int{0},
-		commands: []Command{},
-	}
-
-	var err error
-	for err == nil {
-		var word string
-		word, err = reader.ReadString(' ')
-		if err != nil && err != io.EOF {
-			return nil, err
-		}
-		word = strings.Trim(strings.ReplaceAll(word, "\r", ""), "\n\t ")
-
-		for _, w := range strings.Split(word, "\n") {
-			var cmd Command
-			switch FFCommand(strings.ToLower(w)) {
-			case FF_INCPTR:
-				cmd = C_INCPTR
-			case FF_DECPTR:
-				cmd = C_DECPTR
-			case FF_INC:
-				cmd = C_INC
-			case FF_DEC:
-				cmd = C_DEC
-			case FF_OUT:
-				cmd = C_OUT
-			case FF_ACC:
-				cmd = C_ACC
-			case FF_JMPFOR:
-				cmd = C_JMPFOR
-			case FF_JMPBAC:
-				cmd = C_JMPBAC
-			default:
-				continue
-			}
-			engine.commands = append(engine.commands, cmd)
-		}
-	}
-
-	return engine, nil
-}
-
-func TenX(input io.Reader) (*Engine, error) {
-	reader := bufio.NewReader(input)
-	engine := &Engine{
-		cells:    []int{0},
-		commands: []Command{},
-	}
-
-	var err error
-	for err == nil {
-		var r rune
-		r, _, err = reader.ReadRune()
-		if err != nil && err != io.EOF {
-			return nil, err
-		}
-
-		var cmd Command
-		switch TenXCommand(r) {
-		case TX_INCPTR:
-			cmd = C_INCPTR
-		case TX_DECPTR:
-			cmd = C_DECPTR
-		case TX_INC:
-			cmd = C_INC
-		case TX_DEC:
-			cmd = C_DEC
-		case TX_OUT:
-			cmd = C_OUT
-		case TX_ACC:
-			cmd = C_ACC
-		case TX_JMPFOR:
-			cmd = C_JMPFOR
-		case TX_JMPBAC:
-			cmd = C_JMPBAC
-		default:
-			continue
-		}
-		engine.commands = append(engine.commands, cmd)
-	}
-
-	return engine, nil
-}
-
-func Pikachu(input io.Reader) (*Engine, error) {
-	reader := bufio.NewReader(input)
-	engine := &Engine{
-		cells:    []int{0},
-		commands: []Command{},
-	}
-
-	var err error
-	for err == nil {
-		var word string
-		word, err = reader.ReadString(' ')
-		if err != nil && err != io.EOF {
-			return nil, err
-		}
-		word = strings.Trim(strings.ReplaceAll(word, "\r", ""), "\n\t ")
-
-		for _, w := range strings.Split(word, "\n") {
-			var cmd Command
-			switch PikaCommand(w) {
-			case PK_INCPTR:
-				cmd = C_INCPTR
-			case PK_DECPTR:
-				cmd = C_DECPTR
-			case PK_INC:
-				cmd = C_INC
-			case PK_DEC:
-				cmd = C_DEC
-			case PK_OUT:
-				cmd = C_OUT
-			case PK_ACC:
-				cmd = C_ACC
-			case PK_JMPFOR:
-				cmd = C_JMPFOR
-			case PK_JMPBAC:
-				cmd = C_JMPBAC
-			default:
-				if engine.Debug {
-					fmt.Fprintf(engine.Stdout, "%q ignored", w)
-				}
-				continue
-			}
-			engine.commands = append(engine.commands, cmd)
-		}
-	}
-	return engine, nil
 }
 
 func (e *Engine) newError(message string) *BrainfuckError {

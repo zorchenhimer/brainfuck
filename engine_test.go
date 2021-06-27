@@ -32,18 +32,18 @@ func runFileTest(t *testing.T, tc testCase) error {
 		return fmt.Errorf("Unable to open source file: %w", err)
 	}
 
+	lang := "Brainfuck"
 	//if filepath.Ext(tc.Source) == ".ff" {
 	switch filepath.Ext(tc.Source) {
 	case ".ff":
-		e, err = FuckFuck(file)
+		lang = "FuckFuck"
 	case ".ten":
-		e, err = TenX(file)
+		lang = "TenX"
 	case ".pika":
-		e, err = Pikachu(file)
-	default:
-		e, err = Brainfuck(file)
+		lang = "Pikalang"
 	}
 
+	e, err = Load(file, lang)
 	if err != nil {
 		return fmt.Errorf("Unable to load file: %w", err)
 	}
