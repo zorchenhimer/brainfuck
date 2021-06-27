@@ -150,29 +150,32 @@ func FuckFuck(input io.Reader) (*Engine, error) {
 		if err != nil && err != io.EOF {
 			return nil, err
 		}
+		word = strings.Trim(strings.ReplaceAll(word, "\r", ""), "\n\t ")
 
-		var cmd Command
-		switch FFCommand(strings.ToLower(word)) {
-		case FF_INCPTR:
-			cmd = C_INCPTR
-		case FF_DECPTR:
-			cmd = C_DECPTR
-		case FF_INC:
-			cmd = C_INC
-		case FF_DEC:
-			cmd = C_DEC
-		case FF_OUT:
-			cmd = C_OUT
-		case FF_ACC:
-			cmd = C_ACC
-		case FF_JMPFOR:
-			cmd = C_JMPFOR
-		case FF_JMPBAC:
-			cmd = C_JMPBAC
-		default:
-			continue
+		for _, w := range strings.Split(word, "\n") {
+			var cmd Command
+			switch FFCommand(strings.ToLower(w)) {
+			case FF_INCPTR:
+				cmd = C_INCPTR
+			case FF_DECPTR:
+				cmd = C_DECPTR
+			case FF_INC:
+				cmd = C_INC
+			case FF_DEC:
+				cmd = C_DEC
+			case FF_OUT:
+				cmd = C_OUT
+			case FF_ACC:
+				cmd = C_ACC
+			case FF_JMPFOR:
+				cmd = C_JMPFOR
+			case FF_JMPBAC:
+				cmd = C_JMPBAC
+			default:
+				continue
+			}
+			engine.commands = append(engine.commands, cmd)
 		}
-		engine.commands = append(engine.commands, cmd)
 	}
 
 	return engine, nil
