@@ -34,6 +34,8 @@ func main() {
 		engine, err = FuckFuck(file)
 	case ".ten":
 		engine, err = TenX(file)
+	case ".pika":
+		engine, err = Pikachu(file)
 	default:
 		engine, err = Brainfuck(file)
 	}

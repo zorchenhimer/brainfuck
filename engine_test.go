@@ -32,9 +32,15 @@ func runFileTest(t *testing.T, tc testCase) error {
 		return fmt.Errorf("Unable to open source file: %w", err)
 	}
 
-	if filepath.Ext(tc.Source) == ".ff" {
+	//if filepath.Ext(tc.Source) == ".ff" {
+	switch filepath.Ext(tc.Source) {
+	case ".ff":
 		e, err = FuckFuck(file)
-	} else {
+	case ".ten":
+		e, err = TenX(file)
+	case ".pika":
+		e, err = Pikachu(file)
+	default:
 		e, err = Brainfuck(file)
 	}
 
@@ -146,16 +152,15 @@ func TestCollatz(t *testing.T) {
 	}
 }
 
-// Fails with no output
-//func TestFuckFuck(t *testing.T) {
-//	err := runFileTest(t, testCase{
-//		Source: "testing/fuckfuck.ff",
-//		Output: "testing/fuckfuck.out",
-//	})
-//	if err != nil {
-//		t.Fatalf(err.Error())
-//	}
-//}
+func TestFuckFuck(t *testing.T) {
+	err := runFileTest(t, testCase{
+		Source: "testing/fuckfuck.ff",
+		Output: "testing/fuckfuck.out",
+	})
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
 
 // Fails at offset 2234
 //func TestLife(t *testing.T) {
@@ -183,6 +188,16 @@ func TestTribit(t *testing.T) {
 	err := runFileTest(t, testCase{
 		Source:     "testing/Tribit.b",
 		OutputText: "32 bit cells\n", // This'll probably fail with different configurations
+	})
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
+func TestPikachu(t *testing.T) {
+	err := runFileTest(t, testCase{
+		Source: "testing/pikachu-hello.pika",
+		OutputText: "Pokemon",
 	})
 	if err != nil {
 		t.Fatalf(err.Error())

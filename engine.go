@@ -81,6 +81,20 @@ const (
 	TX_DATA  TenXCommand = '\u2612'
 )
 
+// https://www.dcode.fr/pikalang-language
+type PikaCommand string
+
+const (
+	PK_INCPTR PikaCommand = "pipi"
+	PK_DECPTR PikaCommand = "pichu"
+	PK_INC    PikaCommand = "pi"
+	PK_DEC    PikaCommand = "ka"
+	PK_OUT    PikaCommand = "pikachu"
+	PK_ACC    PikaCommand = "pikapi"
+	PK_JMPFOR PikaCommand = "pika"
+	PK_JMPBAC PikaCommand = "chu"
+)
+
 func (b *BrainfuckError) String() string {
 	return b.Error() + "\n" + b.HelpString()
 }
@@ -220,6 +234,53 @@ func TenX(input io.Reader) (*Engine, error) {
 		engine.commands = append(engine.commands, cmd)
 	}
 
+	return engine, nil
+}
+
+func Pikachu(input io.Reader) (*Engine, error) {
+	reader := bufio.NewReader(input)
+	engine := &Engine{
+		cells:    []int{0},
+		commands: []Command{},
+	}
+
+	var err error
+	for err == nil {
+		var word string
+		word, err = reader.ReadString(' ')
+		if err != nil && err != io.EOF {
+			return nil, err
+		}
+		word = strings.Trim(strings.ReplaceAll(word, "\r", ""), "\n\t ")
+
+		for _, w := range strings.Split(word, "\n") {
+			var cmd Command
+			switch PikaCommand(w) {
+			case PK_INCPTR:
+				cmd = C_INCPTR
+			case PK_DECPTR:
+				cmd = C_DECPTR
+			case PK_INC:
+				cmd = C_INC
+			case PK_DEC:
+				cmd = C_DEC
+			case PK_OUT:
+				cmd = C_OUT
+			case PK_ACC:
+				cmd = C_ACC
+			case PK_JMPFOR:
+				cmd = C_JMPFOR
+			case PK_JMPBAC:
+				cmd = C_JMPBAC
+			default:
+				if engine.Debug {
+					fmt.Fprintf(engine.Stdout, "%q ignored", w)
+				}
+				continue
+			}
+			engine.commands = append(engine.commands, cmd)
+		}
+	}
 	return engine, nil
 }
 
