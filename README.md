@@ -3,9 +3,11 @@
 A simple interpreter for the [brainfuck](https://en.wikipedia.org/wiki/Brainfuck)
 language written in Go.
 
-Also runs programs written in the [FuckFuck](https://github.com/MiffOttah/fuckfuck)
-dialect because lol.  Source files ending in `.ff` are assumed to be FuckFuck,
-everything else is assumed to be vanilla Brainfuck.
+Dialects supported (& default extension):
+- Brainfuck (`.bf`)
+- [FuckFuck](https://github.com/MiffOttah/fuckfuck) (`.ff`)
+- TenX (`.ten`)
+- [Pikalang](https://www.dcode.fr/pikalang-language) (`.pika`)
 
 ## Running
 
@@ -16,6 +18,17 @@ $ go build
 $ brainfuck examples/hello-world.bf
 Hello World!
 ```
+
+### Arguments
+
+`-d`, `--debug`
+Prints out some debugging information.  Very verbose.
+
+`--dialects`
+Lists supported dialects.
+
+`-l`, `--language`
+Specifiy the dialect to use.
 
 ## Input caveat
 
