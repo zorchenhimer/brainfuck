@@ -5,9 +5,6 @@ import (
 )
 
 type Dialect interface {
-	//Parse(reader io.Reader) ([]Command, error)
-	//Runes() map[rune]rune
-	//Words() map[string]rune
 	Type() LangType
 }
 

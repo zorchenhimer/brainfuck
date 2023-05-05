@@ -1,6 +1,5 @@
 package dialects
 
-type TenX RuneMap
 var tx RuneMap = RuneMap{
 	'\u2715': '>',
 	'\u00D7': '<',
@@ -15,4 +14,3 @@ var tx RuneMap = RuneMap{
 }
 
 func init() { registerDialect("TenX", tx) }
-func (t TenX) Type() LangType { return RuneLang }

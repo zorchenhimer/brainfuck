@@ -2,7 +2,6 @@ package dialects
 
 // https://github.com/MiffOttah/fuckfuck
 
-type FuckFuck WordMap
 var ff WordMap = WordMap{
 	"ass": '>',
 	"bitch": '<',
@@ -15,4 +14,3 @@ var ff WordMap = WordMap{
 }
 
 func init() { registerDialect("FuckFuck", ff) }
-func (f FuckFuck) Type() LangType { return WordLang }
