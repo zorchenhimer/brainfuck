@@ -65,6 +65,49 @@ func Load(reader io.Reader, dialect string) (*Engine, error) {
 	return wordLang(reader, d)
 }
 
+func Translate(reader io.Reader, writer io.Writer, source, dest string) error {
+	engine, err := Load(reader, source)
+	if err != nil {
+		return fmt.Errorf("Unable to load source program: %w", err)
+	}
+
+	if source == dest {
+		return fmt.Errorf("Both dialects are the same!")
+	}
+
+	d, ok := dialects.Dialects[dest]
+	if !ok {
+		return fmt.Errorf("Destination dialect %q doesn't exist", dest)
+	}
+
+	newMap := map[Command]string{}
+
+	if d.Type() == dialects.WordLang {
+		wordMap := d.(dialects.WordMap)
+		for key, val := range wordMap {
+			newMap[Command(val)] = key
+		}
+	} else {
+		runeMap := d.(dialects.RuneMap)
+		for key, val := range runeMap {
+			newMap[Command(val)] = string(key)
+		}
+	}
+
+	tl := []string{}
+	for _, c := range engine.commands {
+		tl = append(tl, newMap[c])
+		//fmt.Fprintf(writer, "%s", newMap[c])
+	}
+
+	joinstr := ""
+	if d.Type() == dialects.WordLang {
+		joinstr = " "
+	}
+	_, err = fmt.Fprintf(writer, strings.Join(tl, joinstr))
+	return err
+}
+
 func runeLang(input io.Reader, dialect dialects.Dialect) (*Engine, error) {
 	reader := bufio.NewReader(input)
 	engine := &Engine{

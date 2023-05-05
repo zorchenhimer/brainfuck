@@ -16,6 +16,7 @@ type Arguments struct {
 	Debug bool `arg:"-d,--debug" help:"Turn on debugging."`
 	Language string `arg:"-l,--language" help:"Specific brainfuck dialect to use.  See --dialects for full list."`
 	Dialects bool `arg:"--dialects" help:"List all available dialects."`
+	Translate string `arg:"-t,--translate" help:"Translate to new dialect.  Outputs to STDOUT."`
 }
 
 func main() {
@@ -43,8 +44,6 @@ func main() {
 	}
 	defer file.Close()
 
-	var engine *Engine
-
 	lang := "Brainfuck"
 	if args.Language != "" {
 		lang = args.Language
@@ -59,6 +58,17 @@ func main() {
 		}
 	}
 
+	if args.Translate != "" {
+		err = Translate(file, os.Stdout, lang, args.Translate)
+		if err != nil {
+			fmt.Println("Translation error: ", err)
+			os.Exit(1)
+		}
+		fmt.Println("")
+		return
+	}
+
+	var engine *Engine
 	engine, err = Load(file, lang)
 
 	if err != nil {
